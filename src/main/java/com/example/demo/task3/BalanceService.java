@@ -3,7 +3,6 @@ package com.example.demo.task3;
 import com.example.demo.task1.Account;
 import com.example.demo.task1.AccountRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
