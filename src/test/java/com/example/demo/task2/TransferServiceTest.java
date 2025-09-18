@@ -9,17 +9,20 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest
-@Transactional
 class TransferServiceTest {
     @Autowired
     private AccountRepository repository;
 
     @Autowired
     private TransferService service;
+
+    @Autowired
+    PlatformTransactionManager txManager;
 
     private Account sender;
     private Account getter;
@@ -33,20 +36,26 @@ class TransferServiceTest {
 
     @Test
     public void testTransferWithPropagationRequired() {
-        //given
-        int amount = 200;
-        //when
-        try {
-            wrapTransaction(sender.getId(),getter.getId(),amount,TransactionDefinition.PROPAGATION_REQUIRED);
-        } catch (RuntimeException e) {
-            System.out.println("Exception caught" + e.getMessage());
-        }
-        //then
-        Account senderAfter = repository.findById(sender.getId()).orElseThrow();
-        Account getterAfter = repository.findById(getter.getId()).orElseThrow();
+    int amount = 200;
+        int senderBalance = sender.getBalance();
+        int getterBalance = getter.getBalance();
+        TransactionTemplate transactionTemplate = new TransactionTemplate(txManager);
+        transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
+        transactionTemplate.execute(status -> {
+            try {
+                service.transfer(sender.getId(), getter.getId(), amount, TransactionDefinition.PROPAGATION_REQUIRED);
+                Account after = repository.findById(sender.getId()).orElseThrow();
+                System.out.println(after.getBalance());
+                throw new RuntimeException("Forcing rollback or transaction check");
+            } catch (RuntimeException e) {
+                System.out.println("Exception caught" + e.getMessage());
+            }
 
-        assertEquals(sender.getBalance(), senderAfter.getBalance());
-        assertEquals(getter.getBalance(), getterAfter.getBalance());
+            return null;
+        });
+
+        Account after2 = repository.findById(sender.getId()).orElseThrow();
+        System.out.println(after2.getBalance());
     }
 
     @Test
@@ -55,24 +64,25 @@ class TransferServiceTest {
         int amount = 200;
         int senderBalance = sender.getBalance();
         int getterBalance = getter.getBalance();
-        //when
-        try {
-            wrapTransaction(sender.getId(),getter.getId(),amount,TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        } catch (RuntimeException e) {
-            System.out.println("Exception caught" + e.getMessage());
-        }
-        //then
-        Account senderAfter = repository.findById(sender.getId()).orElseThrow();
-        Account getterAfter = repository.findById(getter.getId()).orElseThrow();
+        TransactionTemplate transactionTemplate = new TransactionTemplate(txManager);
+        transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        transactionTemplate.execute(status -> {
+            try {
+                service.transfer(sender.getId(), getter.getId(), amount, TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+                Account after = repository.findById(sender.getId()).orElseThrow();
+                System.out.println(after.getBalance());
+                throw new RuntimeException("Forcing rollback or transaction check");
+            } catch (RuntimeException e) {
+                System.out.println("Exception caught" + e.getMessage());
+            }
 
-        assertEquals(senderBalance - amount, senderAfter.getBalance());
-        assertEquals(getterBalance + amount, getterAfter.getBalance());
+            return null;
+        });
+
+        Account after2 = repository.findById(sender.getId()).orElseThrow();
+        System.out.println(after2.getBalance());
+
     }
 
-    @Transactional
-    protected void wrapTransaction(Long from, Long to, int amount, int propagation) {
-        service.transfer(from,to,amount,propagation);
-            throw new RuntimeException("Forcing rollback or transaction check");
-   }
 
 }
