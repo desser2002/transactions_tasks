@@ -40,6 +40,8 @@ class TransferServiceTest {
         TransactionTemplate transactionTemplate = new TransactionTemplate(txManager);
         transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
         transactionTemplate.execute(status -> {
+            Account before = repository.findById(sender.getId()).orElseThrow();
+            System.out.println(before.getBalance());
             service.transfer(sender.getId(), getter.getId(), amount, TransactionDefinition.PROPAGATION_REQUIRED);
             Account after = repository.findById(sender.getId()).orElseThrow();
             System.out.println(after.getBalance());
@@ -57,6 +59,8 @@ class TransferServiceTest {
         TransactionTemplate transactionTemplate = new TransactionTemplate(txManager);
         transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         transactionTemplate.execute(status -> {
+                Account before = repository.findById(sender.getId()).orElseThrow();
+                 System.out.println(before.getBalance());
                 service.transfer(sender.getId(), getter.getId(), amount, TransactionDefinition.PROPAGATION_REQUIRES_NEW);
                 Account after = repository.findById(sender.getId()).orElseThrow();
                 System.out.println(after.getBalance());
